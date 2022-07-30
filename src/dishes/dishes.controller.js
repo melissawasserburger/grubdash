@@ -44,24 +44,29 @@ function create(req, res, next) {
   res.status(201).json({ data: newDish });
 }
 
-//stupid fucking test, doesn't make any sense
-// function dishIdRouteMatches(req, res, next) {
-//     const { dishId } = req.params;
-//     if (!dishId) {
-//     next({ status: 400, message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}` });
-//   }
-//   next();
-// }
-
-function dishExists(req, res, next) {
-  const { dishId } = req.params;
-  const foundDish = dishes.find((dish) => dish.id === dishId);
-  if (foundDish) {
-    res.locals.dish = foundDish;
-    return next();
+// this will determine if param :dishId matches the desired dish id
+function validateDishBodyId(req, res, next) {
+    const { dishId } = req.params;
+    const { data: { id } = {} } = req.body;
+    if (id) {
+      if (id === dishId) return next();
+    next({ status: 400, message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}` });
+    }
+    next();
   }
-  next({ status: 404, message: `Dish does not exist: ${dishId}.` });
-}
+
+  function validateDishId(req, res, next) {
+    const { dishId } = req.params;
+    const foundDish = dishes.find((dish) => dish.id === dishId);
+    if (foundDish) {
+      res.locals.dish = foundDish;
+      return next();
+    }
+    next({
+      status: 404,
+      message: `Dish id does not exist: ${dishId}`,
+    });
+  }
 
 function read(req, res, next) {
   const dish = res.locals.dish;
@@ -90,9 +95,10 @@ module.exports = {
     validPriceProperty,
     create,
   ],
-  read: [dishExists, read],
+  read: [validateDishId, read],
   update: [
-    dishExists,
+    validateDishId,
+    validateDishBodyId,
     bodyHasValidProperty("name"),
     bodyHasValidProperty("description"),
     bodyHasValidProperty("price"),
